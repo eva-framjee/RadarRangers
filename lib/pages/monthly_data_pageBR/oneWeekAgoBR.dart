@@ -76,7 +76,7 @@ class _OneWeekAgoPageStateBR extends State<OneWeekAgoPageBR> {
         child: Column(
           children: [
 
-            /// ⭐ TOP HEADING ⭐
+            /// TOP HEADING 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -100,7 +100,7 @@ class _OneWeekAgoPageStateBR extends State<OneWeekAgoPageBR> {
 
             const SizedBox(height: 20),
 
-            /// ⭐ BAR CHART ⭐
+            /// BAR CHART
             Expanded(
               child: BarChart(
                 BarChartData(

@@ -158,7 +158,7 @@ class _SevenDaysAgoPageStateBR extends State<SevenDaysAgoPageBR> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 40,
-                        interval: 20,
+                        interval: 5,
                         getTitlesWidget: (value, meta) {
                           if (value % 20 == 0) {
                             return Text(

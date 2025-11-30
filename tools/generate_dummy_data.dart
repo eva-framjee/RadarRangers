@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 Future<void> generateDummyHeartData() async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
-    print("❌ No user logged in");
+    print("No user logged in");
     return;
   }
 
@@ -14,13 +14,13 @@ Future<void> generateDummyHeartData() async {
 
   final random = Random();
 
-  print("🟡 Generating dummy data for $uid ...");
+  print(" Generating dummy data for $uid ...");
 
   for (int i = 0; i < 500; i++) {
-    // Random heart rate between 60–120
+    // Random heart rate between 60 and 120
     int heartRate = 40 + random.nextInt(60);
 
-    // Random timestamp within last 7 days
+    // Random timestamp for  7 days
     DateTime timestamp = DateTime.now()
         .subtract(Duration(
       hours: random.nextInt(24 * 7),
@@ -37,5 +37,5 @@ Future<void> generateDummyHeartData() async {
     });
   }
 
-  print("✅ DONE — 500 dummy heart_rate documents added!");
+  print(" DONE — 500 dummy heart_rate documents added!");
 }

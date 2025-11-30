@@ -55,9 +55,7 @@ class _LiveBreathWavePageState extends State<LiveBreathWavePage> {
 
           const SizedBox(height: 20),
 
-          // -----------------------------------------------------
-          // 60 SECOND LIVE WAVEFORM
-          // -----------------------------------------------------
+//60 sec waveform
           Padding(
             padding: const EdgeInsets.only(left: 40, right: 20, bottom: 20),
             child: SizedBox(
@@ -114,63 +112,93 @@ class _LiveBreathWavePageState extends State<LiveBreathWavePage> {
             ),
           ),
 
-          // -----------------------------------------------------
-          // 24-HOUR AVERAGE BAR GRAPH
-          // -----------------------------------------------------
-          const Text(
-            "Average Breath Rate (past 24 hours)",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          // 24-Hr bar graph
+         const Text(
+          "Average Breath Rate (past 24 hours)",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
 
-          const SizedBox(height: 10),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 250,
+          child: BarChart(
+            BarChartData(
+              maxY: 35,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+              ),
 
-          SizedBox(
-            height: 250,
-            child: BarChart(
-              BarChartData(
-                maxY: 35,
-                gridData: FlGridData(show: true),
-                borderData: FlBorderData(show: true),
+              borderData: FlBorderData(
+                show: true,
+                border: const Border(
+                  left: BorderSide(color: Colors.black, width: 1),
+                  bottom: BorderSide(color: Colors.black, width: 1),
+                  top: BorderSide(color: Colors.transparent),
+                  right: BorderSide(color: Colors.transparent),
+                ),
+              ),
 
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 5,
-                      getTitlesWidget: (v, _) => Text(
-                        v.toInt().toString(),
-                        style: const TextStyle(fontSize: 8),
-                      ),
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (i, _) => Text(
-                        (i.toInt() + 1).toString(),
-                        style: const TextStyle(fontSize: 8),
-                      ),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 5,
+                    reservedSize: 30,
+                    getTitlesWidget: (v, _) => Text(
+                      v.toInt().toString(),
+                      style: const TextStyle(fontSize: 8),
                     ),
                   ),
                 ),
 
-                barGroups: List.generate(
-                  24,
-                  (i) => BarChartGroupData(
-                    x: i,
-                    barRods: [
-                      BarChartRodData(
-                        toY: engine.hourlyAverages[i],
-                        width: 6,
-                        color: Colors.blue,
-                      ),
-                    ],
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 20,
+                    getTitlesWidget: (i, _) => Text(
+                      (i.toInt() + 1).toString(),
+                      style: const TextStyle(fontSize: 8),
+                    ),
                   ),
+                ),
+
+                // ❌ Fully disable right axis
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: false,
+                    reservedSize: 0,
+                    getTitlesWidget: (_, __) => const SizedBox.shrink(),
+                  ),
+                ),
+
+                // ❌ Fully disable top axis
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: false,
+                    reservedSize: 0,
+                    getTitlesWidget: (_, __) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+
+              barGroups: List.generate(
+                24,
+                (i) => BarChartGroupData(
+                  x: i,
+                  barRods: [
+                    BarChartRodData(
+                      toY: engine.hourlyAverages[i],
+                      width: 6,
+                      color: Colors.blue,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-
+        ),
+        
           const SizedBox(height: 40),
         ],
       ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'liveHRWavePage.dart';   // <--- Make sure this import exists
+import 'liveHRWavePage.dart';
 
 class HeartRatePage extends StatelessWidget {
-  const HeartRatePage({super.key});
+  final String username;
+
+  const HeartRatePage({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +21,9 @@ class HeartRatePage extends StatelessWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
+          
           Expanded(
-            child: LiveHeartWavePage(),   // <--- This displays the waveform
+            child: LiveHeartWavePage(username: username),
           ),
         ],
       ),

@@ -4,14 +4,16 @@ import 'heartRatePage.dart';
 import 'sleepDataPage.dart';
 
 class StatsPage extends StatelessWidget {
-  const StatsPage({super.key});
+  final String username;
+
+  const StatsPage({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Data'),
-        backgroundColor: const Color.fromARGB(255, 172, 198, 170),
+        backgroundColor: Color.fromARGB(255, 172, 198, 170),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -23,7 +25,7 @@ class StatsPage extends StatelessWidget {
             // Breath Data Button
             StatButton(
               title: 'Breath Data',
-              color: Colors.blue.shade100,           
+              color: Colors.blue.shade100,
               icon: Icons.air,
               onTap: () {
                 Navigator.push(
@@ -43,25 +45,16 @@ class StatsPage extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const HeartRatePage()),
+                  MaterialPageRoute(
+                    builder: (context) => HeartRatePage(username: username),
+                  ),
                 );
               },
             ),
 
             const SizedBox(height: 20),
 
-            // Sleep Data Button
-            StatButton(
-              title: 'Hours Slept',
-              color: Colors.purple.shade100,
-              icon: Icons.bedtime,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SleepDataPage()),
-                );
-              },
-            ),
+            // You can add other StatButton widgets here
           ],
         ),
       ),
@@ -69,7 +62,10 @@ class StatsPage extends StatelessWidget {
   }
 }
 
-// Reusable button widget
+//
+// button
+//
+
 class StatButton extends StatelessWidget {
   final String title;
   final Color color;

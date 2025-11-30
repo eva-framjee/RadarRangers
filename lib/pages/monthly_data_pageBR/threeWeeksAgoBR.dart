@@ -76,7 +76,7 @@ class _ThreeWeeksAgoPageStateBR extends State<ThreeWeeksAgoPageBR> {
         child: Column(
           children: [
 
-            /// ⭐ TOP HEADING ⭐
+            /// TOP HEADING 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -100,7 +100,7 @@ class _ThreeWeeksAgoPageStateBR extends State<ThreeWeeksAgoPageBR> {
 
             const SizedBox(height: 20),
 
-            /// ⭐ BAR CHART ⭐
+            ///  BAR CHART
             Expanded(
               child: BarChart(
                 BarChartData(

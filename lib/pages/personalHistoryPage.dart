@@ -19,10 +19,8 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
   final TextEditingController medicalController = TextEditingController();
 
   String? selectedGender;
-  String? tachychondiaQuestion;
-  String? breathingQuestion;
+  String? normalHeartRate;   // <-- NEW dropdown
   bool isLoading = true;
-
 
   @override
   void initState() {
@@ -47,8 +45,7 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
         heightController.text = data['height'] ?? '';
         medicalController.text = data['medical_history'] ?? '';
         selectedGender = data['gender'];
-        tachychondiaQuestion = data['health'];
-        breathingQuestion = data['health'];
+        normalHeartRate = data['normal_heart_rate'];
         isLoading = false;
       });
     } else {
@@ -57,23 +54,18 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
   }
 
   Future<void> saveInfo() async {
-    // Validate gender selection
     if (selectedGender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select your gender.')),
       );
       return;
     }
-    if (tachychondiaQuestion == null){
+
+    if (normalHeartRate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please state medical conditions.'))
+        const SnackBar(content: Text('Please select your normal heart rate.')),
       );
       return;
-    }
-    if (breathingQuestion == null){
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please state medical conditions.'))
-      );
     }
 
     await FirebaseFirestore.instance
@@ -90,8 +82,7 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
           'height': heightController.text,
           'medical_history': medicalController.text,
           'gender': selectedGender,
-          'heart_conditions': tachychondiaQuestion,
-          'breath_conditions' : breathingQuestion, 
+          'normal_heart_rate': normalHeartRate, // <-- NEW FIELD
         });
       }
     });
@@ -141,7 +132,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // 🧍‍♂️ First name
               TextField(
                 controller: firstNameController,
                 decoration: const InputDecoration(
@@ -151,7 +141,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // 🧍‍♀️ Last name
               TextField(
                 controller: lastNameController,
                 decoration: const InputDecoration(
@@ -161,7 +150,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // Age
               TextField(
                 controller: ageController,
                 keyboardType: TextInputType.number,
@@ -172,7 +160,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // Weight
               TextField(
                 controller: weightController,
                 keyboardType: TextInputType.number,
@@ -183,7 +170,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // Height
               TextField(
                 controller: heightController,
                 keyboardType: TextInputType.number,
@@ -194,7 +180,6 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               ),
               const SizedBox(height: 20),
 
-              // Gender dropdown
               DropdownButtonFormField<String>(
                 value: selectedGender,
                 decoration: const InputDecoration(
@@ -207,103 +192,31 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
                   DropdownMenuItem(value: 'Other', child: Text('Other')),
                 ],
                 onChanged: (value) {
-                  setState(() {
-                    selectedGender = value;
-                  });
+                  setState(() => selectedGender = value);
                 },
               ),
               const SizedBox(height: 20),
 
-
-              const Text(
-                'Conditions that may raise heartrate:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('-hyperthyroidism'),
-                    Text('-anemia'),
-                    Text('-lung disease'),
-                    Text('-high blood pressure'),
-                    Text('-heart disease'),
-                    Text('-heart failure'),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              //tachycondria question
+              //normal heart rate dropdown
+              
               DropdownButtonFormField<String>(
-                value: tachychondiaQuestion,
+                value: normalHeartRate,
                 decoration: const InputDecoration(
-                  labelText: 'Heart Conditions',
+                  labelText: 'Normal Heart Rate',
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'Yes', child: Text('Yes')),
-                  DropdownMenuItem(value: 'No', child: Text('No')),
+                  DropdownMenuItem(value: '60-100', child: Text('60-100')),
+                  DropdownMenuItem(value: '80-120', child: Text('80-120')),
+                  DropdownMenuItem(value: '40-60', child: Text('40-60')),
                 ],
                 onChanged: (value) {
                   setState(() {
-                    tachychondiaQuestion = value;
+                    normalHeartRate = value;
                   });
                 },
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Conditions that may raise Breathing Rate:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
 
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('-asthma'),
-                    Text('-psychological tachypnea'),
-                    Text('-anxiety'),
-                    Text('-high blood pressure'),
-                    Text('-heart disease'),
-                    Text('-heart failure')
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              //tachycondria question
-              DropdownButtonFormField<String>(
-                value: breathingQuestion,
-                decoration: const InputDecoration(
-                  labelText: 'Breathing Conditions',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'Yes', child: Text('Yes')),
-                  DropdownMenuItem(value: 'No', child: Text('No')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    breathingQuestion = value;
-                  });
-                },
-              ),
               const SizedBox(height: 20),
 
               // Medical History

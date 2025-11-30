@@ -41,7 +41,7 @@ class HomePage extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const StatsPage()),
+                  MaterialPageRoute(builder: (context) => StatsPage(username: username)),
                 );
               },
               child: _buildButton("Daily Stats"),
@@ -153,19 +153,39 @@ class HomePage extends StatelessWidget {
 
 /// ------------------------------------------------------
 ///   Generate *4 weeks* of HR + BR dummy data
-///   → Every 60 minutes for 28 days
-///   → Total: 2688 heart + 2688 breath samples
-/// ------------------------------------------------------
-Future<void> generateDummyDataMonthly(String uid) async {
-  int totalHours = 24 * 7 * 4; // 4 weeks of hours = 672
+///   Every 60 minutes for 28 days
+///   Total: 2688 heart + 2688 breath samples
 
+Future<void> generateDummyDataMonthly(String uid) async {
+  const int totalHours = 24 * 30; // 30 days
+  Random rng = Random();
+
+  // Start with average values
+  double heart = 70;   // *relatively average* HR
+  double breath = 14;  // *relatively average* BR
   for (int i = 0; i < totalHours; i++) {
     DateTime timestamp = DateTime.now().subtract(Duration(hours: i));
+    // HEART RATE MOMENTUM MODEL
+    // Small natural movement +/-2 bpm
+    heart += rng.nextDouble() * 4 - 2;
+    // Allow it to stay around same trend
+    double drift = rng.nextDouble() * 0.4 - 0.2;  // +/-0.2 bpm drift
+    heart += drift;
+    // range
+    if (heart < 45) heart = 45 + rng.nextDouble() * 3;
+    if (heart > 130) heart = 130 - rng.nextDouble() * 3;
 
-    int heartValue = 40 + Random().nextInt(80); // HR: 60–140
-    int breathValue = 8 + Random().nextInt(14); // BR: 8–22
+    int heartValue = heart.round();
+    // BREATH RATE MOMENTUM
+    breath += rng.nextDouble() * 2 - 1; // small motion
+    breath += rng.nextDouble() * 0.2 - 0.1; // slow drift
 
-    /// ----- HEART RATE -----
+    if (breath < 8) breath = 8 + rng.nextDouble();
+    if (breath > 22) breath = 22 - rng.nextDouble();
+
+    int breathValue = breath.round();
+
+    // SAVE HEART RATE
     await FirebaseFirestore.instance
         .collection("users")
         .doc(uid)
@@ -175,7 +195,7 @@ Future<void> generateDummyDataMonthly(String uid) async {
       "timestamp": timestamp,
     });
 
-    /// ----- BREATH RATE -----
+    // SAVE BREATH RATE
     await FirebaseFirestore.instance
         .collection("users")
         .doc(uid)
@@ -186,3 +206,35 @@ Future<void> generateDummyDataMonthly(String uid) async {
     });
   }
 }
+
+
+// Future<void> generateDummyDataMonthly(String uid) async {
+//   int totalHours = 24 * 7 * 4; // 4 weeks of hours = 672
+
+//   for (int i = 0; i < totalHours; i++) {
+//     DateTime timestamp = DateTime.now().subtract(Duration(hours: i));
+
+//     int heartValue = 40 + Random().nextInt(80); // HR: 60–140
+//     int breathValue = 8 + Random().nextInt(14); // BR: 8–22
+
+//     /// HEART RATE
+//     await FirebaseFirestore.instance
+//         .collection("users")
+//         .doc(uid)
+//         .collection("heart_data")
+//         .add({
+//       "heart_rate": heartValue,
+//       "timestamp": timestamp,
+//     });
+
+//     ///  BREATH RATE 
+//     await FirebaseFirestore.instance
+//         .collection("users")
+//         .doc(uid)
+//         .collection("breath_data")
+//         .add({
+//       "breath_rate": breathValue,
+//       "timestamp": timestamp,
+//     });
+//   }
+// }

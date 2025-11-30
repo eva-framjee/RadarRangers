@@ -3,70 +3,82 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 
 class HeartRateService {
-  // --------------------- SINGLETON ---------------------
+  // -------- SINGLETON --------
   static final HeartRateService _instance = HeartRateService._internal();
   factory HeartRateService() => _instance;
   HeartRateService._internal();
 
-  // --------------------- LIVE DATA ---------------------
+  // -------- DATA --------
+  double currentBPM = 80;
+  double hourHRV = 7.0;  // always non-zero
+
   List<FlSpot> dataPoints = [];
-  double timeX = 0;
-  double currentBPM = 70;
+  List<double> hourlyAverages = List.filled(24, 75);
 
-  Timer? timer;
-
-  bool running = false;
-
-  // --------------------- ALERT FLAGS ---------------------
-  bool lowAlertSent = false;
   bool highAlertSent = false;
+  bool lowAlertSent = false;
 
-  // --------------------- 24H DATA -----------------------
-  List<double> hourlyAverages = List.filled(24, 70);  
-  int samplesCollected = 0;
-  double sumBPM = 0;
+  Timer? _bpmTimer;      // updates every second
+  Timer? _hrvTimer;      // updates once per hour
+  int _timeCounter = 0;
 
-  // ------------------------------------------------------
-  // START THE SIMULATION (only once globally)
-  // ------------------------------------------------------
+  final Random _rand = Random();
+
+  // -------- START SERVICE --------
   void start() {
-    if (running) return;
-    running = true;
+    // Prevent duplicate timers
+    _bpmTimer?.cancel();
+    _hrvTimer?.cancel();
 
-    timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      // realistic random variation
-      double bpm = currentBPM + Random().nextDouble() * 10 - 5;
-
-      // clamp values
-      bpm = bpm.clamp(40, 160);
-
-      currentBPM = bpm;
-
-      // ---- 24h average handling ----
-      sumBPM += currentBPM;
-      samplesCollected++;
-
-      if (samplesCollected == 3600) {
-        hourlyAverages.removeAt(0);
-        hourlyAverages.add(sumBPM / samplesCollected);
-        samplesCollected = 0;
-        sumBPM = 0;
-      }
-
-      // ---- Scroll waveform ----
-      dataPoints.add(FlSpot(timeX, bpm));
-      timeX += 0.1;
-
-      if (dataPoints.length > 600) {
-        dataPoints.removeAt(0);
-        dataPoints = dataPoints
-            .asMap()
-            .entries
-            .map((e) => FlSpot(e.key * 0.1, e.value.y))
-            .toList();
-
-        timeX = dataPoints.length * 0.1;
-      }
+    // BPM updates every second
+    _bpmTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateBPM();
+      _updateGraph();
     });
+
+    // HRV updates once every hour
+    _hrvTimer = Timer.periodic(const Duration(hours: 1), (_) {
+      _updateHRV();
+    });
+  }
+
+  // -------- BPM: ±1 per second (40–120) --------
+  void _updateBPM() {
+    int change = _rand.nextBool() ? 1 : -1;
+    currentBPM += change;
+
+    if (currentBPM < 40) currentBPM = 40;
+    if (currentBPM > 120) currentBPM = 120;
+  }
+
+  // -------- Graph: 60 seconds --------
+  void _updateGraph() {
+    dataPoints.add(FlSpot(_timeCounter.toDouble(), currentBPM));
+
+    if (dataPoints.length > 60) {
+      dataPoints.removeAt(0);
+
+      for (int i = 0; i < dataPoints.length; i++) {
+        dataPoints[i] = FlSpot(i.toDouble(), dataPoints[i].y);
+      }
+    }
+
+    _timeCounter++;
+  }
+
+  // -------- HRV: update once per hour --------
+  void _updateHRV() {
+    // slow drift, realistic
+    double drift = (_rand.nextDouble() * 0.8) - 0.4;  // -0.4 to +0.4
+
+    hourHRV += drift;
+
+    if (hourHRV < 4) hourHRV = 4;
+    if (hourHRV > 12) hourHRV = 12;
+  }
+
+  void dispose() {
+    _bpmTimer?.cancel();
+    _hrvTimer?.cancel();
   }
 }
