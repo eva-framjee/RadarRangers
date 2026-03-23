@@ -4,16 +4,16 @@ import 'heartRatePage.dart';
 import 'sleepDataPage.dart';
 
 class StatsPage extends StatelessWidget {
-  final String username;
+  final String uid;
 
-  const StatsPage({super.key, required this.username});
+  const StatsPage({super.key, required this.uid});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Data'),
-        backgroundColor: Color.fromARGB(255, 172, 198, 170),
+        backgroundColor: const Color.fromARGB(255, 172, 198, 170),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -24,13 +24,15 @@ class StatsPage extends StatelessWidget {
 
             // Breath Data Button
             StatButton(
-              title: 'Breath Data',
+              title: 'Respiratory Rate',
               color: Colors.blue.shade100,
               icon: Icons.air,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const BreathDataPage()),
+                  MaterialPageRoute(
+                    builder: (context) => BreathDataPage(uid: uid),
+                  ),
                 );
               },
             ),
@@ -46,25 +48,19 @@ class StatsPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => HeartRatePage(username: username),
+                    builder: (context) => HeartRatePage(uid: uid),
                   ),
                 );
               },
             ),
 
             const SizedBox(height: 20),
-
-            // You can add other StatButton widgets here
           ],
         ),
       ),
     );
   }
 }
-
-//
-// button
-//
 
 class StatButton extends StatelessWidget {
   final String title;

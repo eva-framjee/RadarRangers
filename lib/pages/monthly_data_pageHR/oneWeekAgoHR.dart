@@ -17,6 +17,9 @@ class _OneWeekAgoPageStateHR extends State<OneWeekAgoPageHR> {
   late DateTime startDate;
   late DateTime endDate;
 
+  bool _loading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -24,147 +27,192 @@ class _OneWeekAgoPageStateHR extends State<OneWeekAgoPageHR> {
   }
 
   Future<void> fetchData() async {
-    DateTime now = DateTime.now();
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
-    /// 1 week ago = 14-7
-    startDate = now.subtract(const Duration(days: 14));
-    endDate = now.subtract(const Duration(days: 7));
+    try {
+      final now = DateTime.now();
 
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(widget.uid)
-        .collection("heart_data")
-        .where("timestamp", isGreaterThan: startDate)
-        .where("timestamp", isLessThan: endDate)
-        .orderBy("timestamp")
-        .get();
+      // Normalize to midnight today
+      final todayMidnight = DateTime(now.year, now.month, now.day);
 
-    List<List<double>> buckets = List.generate(7, (_) => []);
+      // 1 week ago = the 7-day block BEFORE this week
+      startDate = todayMidnight.subtract(const Duration(days: 14));
+      endDate = todayMidnight.subtract(const Duration(days: 7));
 
-    for (var doc in snapshot.docs) {
-      DateTime ts = (doc["timestamp"] as Timestamp).toDate();
-      int dayIndex = ts.difference(startDate).inDays.clamp(0, 6);
-      double hr = (doc["heart_rate"] as num).toDouble();
-      buckets[dayIndex].add(hr);
+      final snapshot = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(widget.uid)
+          .collection("heart_data")
+          .where("timestamp",
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where("timestamp", isLessThan: Timestamp.fromDate(endDate))
+          .orderBy("timestamp")
+          .get();
+
+      final buckets = List.generate(7, (_) => <double>[]);
+
+      for (final doc in snapshot.docs) {
+        final ts = (doc["timestamp"] as Timestamp).toDate();
+        final hr = (doc["heart_rate"] as num).toDouble();
+
+        final dayIndex =
+            ts.difference(startDate).inDays.clamp(0, 6);
+
+        buckets[dayIndex].add(hr);
+      }
+
+      final averages = buckets.map((list) {
+        if (list.isEmpty) return 0.0;
+        final sum = list.reduce((a, b) => a + b);
+        return sum / list.length;
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        dailyAverages = averages;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
     }
-
-    List<double> averages = buckets.map((list) {
-      if (list.isEmpty) return 0.0;
-      return list.reduce((a, b) => a + b) / list.length;
-    }).toList();
-
-    setState(() => dailyAverages = averages);
   }
 
   String formatRange(DateTime s, DateTime e) {
     final formatter = DateFormat("MMM d");
-    return "${formatter.format(s)} - ${formatter.format(e)}";
+    // subtract 1 day from end so label shows correct range
+    return "${formatter.format(s)} - ${formatter.format(e.subtract(const Duration(days: 1)))}";
   }
 
   @override
   Widget build(BuildContext context) {
-    String rangeText = formatRange(startDate, endDate);
+    final rangeText = formatRange(startDate, endDate);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("1 Week Ago (Daily Avg)"),
-        backgroundColor: Color.fromARGB(255, 172, 198, 170),
+        backgroundColor: const Color.fromARGB(255, 172, 198, 170),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : (_error != null)
+                ? Center(child: Text("Error: $_error"))
+                : Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            rangeText,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "Beats per minute weekly average",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
 
-            /// ⭐ TOP HEADING ⭐
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  rangeText,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "Beat per minute weekly average",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
+                      const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 16, right: 12),
+                          child: BarChart(
+                            BarChartData(
+                              minY: 0,
+                              maxY: 220,
 
-            /// ⭐ BAR CHART ⭐
-            Expanded(
-              child: BarChart(
-                BarChartData(
-                  minY: 0,
-                  maxY: 220,
+                              barGroups: List.generate(7, (i) {
+                                return BarChartGroupData(
+                                  x: i,
+                                  barRods: [
+                                    BarChartRodData(
+                                      toY: dailyAverages[i],
+                                      color: Colors.green,
+                                      width: 18,
+                                    ),
+                                  ],
+                                );
+                              }),
 
-                  /// --- BAR GROUPS ---
-                  barGroups: List.generate(7, (i) {
-                    return BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: dailyAverages[i],
-                          color: Colors.green,
-                          width: 18,
+                              titlesData: FlTitlesData(
+                                leftTitles: AxisTitles(
+                                  axisNameWidget: const Padding(
+                                    padding: EdgeInsets.only(bottom: 6),
+                                    child: Text(
+                                      "Heart Rate (BPM)",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  axisNameSize: 26,
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    interval: 20,
+                                    reservedSize: 44,
+                                    getTitlesWidget: (value, meta) {
+                                      return Text(
+                                        value.toInt().toString(),
+                                        style: const TextStyle(fontSize: 10),
+                                      );
+                                    },
+                                  ),
+                                ),
+
+                                bottomTitles: AxisTitles(
+                                  axisNameWidget: const Padding(
+                                    padding: EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      "Day",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  axisNameSize: 24,
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (value, meta) {
+                                      return Text(
+                                        "Day ${value.toInt() + 1}",
+                                        style: const TextStyle(fontSize: 10),
+                                      );
+                                    },
+                                  ),
+                                ),
+
+                                topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                              ),
+
+                              gridData: FlGridData(show: true),
+                            ),
+                          ),
                         ),
-                      ],
-                    );
-                  }),
-
-                  /// --- TITLES ---
-                  titlesData: FlTitlesData(
-
-                    /// Y-AXIS numbers only (0,5,10,...40)
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        interval: 20,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
                       ),
-                    ),
-
-                    /// Bottom X-axis titles
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            "Day ${value.toInt() + 1}",
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ],
                   ),
-
-                  gridData: FlGridData(show: true),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

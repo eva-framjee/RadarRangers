@@ -1,32 +1,16 @@
-// import 'package:flutter/material.dart';
-// import 'liveBRWavePage.dart';
-
-// class BreathDataPage extends StatelessWidget {
-//   const BreathDataPage({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Breath Rate Data'),
-//         backgroundColor: Colors.blue,
-//       ),
-//       body: const LiveBreathWavePage(),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
-import 'liveBRWavePage.dart';   // <--- Make sure this import exists
+import 'liveBRWavePage.dart';
 
 class BreathDataPage extends StatelessWidget {
-  const BreathDataPage({super.key});
+  final String uid;
+
+  const BreathDataPage({super.key, required this.uid});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Breath Rate Data'),
+        title: const Text('Respiratory Rate Data'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
@@ -38,7 +22,7 @@ class BreathDataPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: LiveBreathWavePage(),   // <--- This displays the waveform
+            child: LiveBreathWavePage(uid: uid),
           ),
         ],
       ),

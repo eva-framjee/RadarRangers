@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/components/text_field.dart';
 import 'package:flutter_application_1/pages/new_user_page.dart';
 import 'package:flutter_application_1/pages/home_page.dart';
+import 'package:flutter_application_1/pages/forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +18,9 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
 
+  // NEW: controls whether the password is hidden
+  bool _obscurePassword = true;
+
   Future<void> signUserIn() async {
     setState(() => isLoading = true);
 
@@ -26,7 +30,8 @@ class _LoginPageState extends State<LoginPage> {
       final inputUsername = usernameController.text.trim();
       final inputPassword = passwordController.text.trim();
 
-      print("🟡 Attempting Firestore login: username='$inputUsername', password='$inputPassword'");
+      print(
+          "Attempting Firestore login: username='$inputUsername', password='$inputPassword'");
 
       // Query Firestore for matching username + password
       final query = await users
@@ -34,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
           .where('password', isEqualTo: inputPassword)
           .get();
 
-      print("🟢 Firestore returned ${query.docs.length} document(s)");
+      print("Firestore returned ${query.docs.length} document(s)");
 
       if (query.docs.isNotEmpty) {
         // Found a matching document
@@ -53,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       } else {
         // No matching document found
-        print("❌ Login failed: invalid credentials");
+        print("Login failed: invalid credentials");
         showDialog(
           context: context,
           builder: (context) => const AlertDialog(
@@ -63,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      print("🔥 Firestore error: $e");
+      print("Firestore error: $e");
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -110,13 +115,34 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 15),
 
-                // Password field
-                TypeTextField(
-                  controller: passwordController,
-                  hintText: 'Password',
-                  obscureText: true,
-                  width: 250,
-                  height: 45,
+                // Password field with eye toggle
+                Stack(
+                  alignment: Alignment.centerRight,
+                  children: [
+                    TypeTextField(
+                      controller: passwordController,
+                      hintText: 'Password',
+                      obscureText: _obscurePassword,
+                      width: 250,
+                      height: 45,
+                    ),
+                    Positioned(
+                      right: 6,
+                      child: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Colors.black54,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 25),
@@ -127,7 +153,9 @@ class _LoginPageState extends State<LoginPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal[700],
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 12),
+                      horizontal: 40,
+                      vertical: 12,
+                    ),
                   ),
                   child: isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
@@ -155,6 +183,26 @@ class _LoginPageState extends State<LoginPage> {
                   },
                   child: const Text(
                     'New User? Create an Account',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+
+                // Forgot Password Button
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordPage(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Forgot Password?',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 16,

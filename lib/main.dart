@@ -130,12 +130,79 @@
 // }
 
 
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:permission_handler/permission_handler.dart';
+
+// import 'package:flutter_application_1/pages/login_page.dart';
+
+// final FlutterLocalNotificationsPlugin notificationsPlugin =
+//     FlutterLocalNotificationsPlugin();
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+
+//   // -------------------------------------------
+//   // NOTIFICATION INITIALIZATION
+//   // -------------------------------------------
+//   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+//   const initSettings = InitializationSettings(android: androidInit);
+//   await notificationsPlugin.initialize(initSettings);
+
+//   // -------------------------------------------
+//   // ASK NOTIFICATION PERMISSION (Android 13+ & iOS)
+//   // -------------------------------------------
+//   await requestNotificationPermission();
+
+//   runApp(const MyApp());
+// }
+
+// // -------------------------------------------------
+// // REQUEST PERMISSION FUNCTION
+// // -------------------------------------------------
+// Future<void> requestNotificationPermission() async {
+//   // ANDROID 13+
+//   if (await Permission.notification.isDenied) {
+//     await Permission.notification.request();
+//   }
+
+//   // iOS
+//   await notificationsPlugin
+//       .resolvePlatformSpecificImplementation<
+//           IOSFlutterLocalNotificationsPlugin>()
+//       ?.requestPermissions(alert: true, badge: true, sound: true);
+// }
+
+// // -------------------------------------------------
+// // MAIN APP CLASS
+// // -------------------------------------------------
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Health Monitor',
+//       theme: ThemeData(
+//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+//       ),
+//       home: LoginPage(),
+//     );
+//   }
+// }
+
+
+//new for tracking ai state
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:flutter_application_1/pages/login_page.dart';
+import 'package:flutter_application_1/pages/notification_service.dart';
 
 final FlutterLocalNotificationsPlugin notificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -144,40 +211,28 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // -------------------------------------------
-  // NOTIFICATION INITIALIZATION
-  // -------------------------------------------
-  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidInit);
-  await notificationsPlugin.initialize(initSettings);
+  await NotificationService().init();
 
-  // -------------------------------------------
-  // ASK NOTIFICATION PERMISSION (Android 13+ & iOS)
-  // -------------------------------------------
   await requestNotificationPermission();
 
   runApp(const MyApp());
 }
 
-// -------------------------------------------------
-// REQUEST PERMISSION FUNCTION
-// -------------------------------------------------
 Future<void> requestNotificationPermission() async {
-  // ANDROID 13+
   if (await Permission.notification.isDenied) {
     await Permission.notification.request();
   }
 
-  // iOS
   await notificationsPlugin
       .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(alert: true, badge: true, sound: true);
+      ?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 }
 
-// -------------------------------------------------
-// MAIN APP CLASS
-// -------------------------------------------------
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -185,10 +240,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Health Monitor',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
-      home: LoginPage(),
+      home: const LoginPage(),
     );
   }
 }

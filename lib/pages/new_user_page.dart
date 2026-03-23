@@ -12,6 +12,7 @@ class NewUserPage extends StatefulWidget {
 class _NewUserPageState extends State<NewUserPage> {
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
+  final emailController = TextEditingController();
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
@@ -37,6 +38,7 @@ class _NewUserPageState extends State<NewUserPage> {
       await FirebaseFirestore.instance.collection('users').add({
         'first_name': firstNameController.text.trim(),
         'last_name': lastNameController.text.trim(),
+        'email': emailController.text.trim(),
         'username': usernameController.text.trim(),
         'password': passwordController.text.trim(),
       });
@@ -91,6 +93,10 @@ class _NewUserPageState extends State<NewUserPage> {
               TextField(
                 controller: lastNameController,
                 decoration: const InputDecoration(labelText: 'Last Name'),
+              ),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Enter Email'),
               ),
               const SizedBox(height: 15),
               TextField(

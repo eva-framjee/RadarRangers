@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'liveHRWavePage.dart';
 
 class HeartRatePage extends StatelessWidget {
-  final String username;
+  final String uid;
 
-  const HeartRatePage({super.key, required this.username});
+  const HeartRatePage({super.key, required this.uid});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,7 @@ class HeartRatePage extends StatelessWidget {
           const SizedBox(height: 10),
           
           Expanded(
-            child: LiveHeartWavePage(username: username),
+            child: LiveHeartWavePage(uid: uid),
           ),
         ],
       ),

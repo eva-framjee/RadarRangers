@@ -1,84 +1,69 @@
+// ================================
+// live_heart_rate_service.dart
+// BLE-backed (no dummy data)
+// ================================
+
 import 'dart:async';
-import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
+import 'ble_manager.dart';
 
 class HeartRateService {
-  // -------- SINGLETON --------
   static final HeartRateService _instance = HeartRateService._internal();
   factory HeartRateService() => _instance;
   HeartRateService._internal();
 
-  // -------- DATA --------
-  double currentBPM = 80;
-  double hourHRV = 7.0;  // always non-zero
+  // What your page already reads
+  double currentBPM = 0;
+  double hourHRV = 0; // optional; keep 0 unless you compute it later
 
   List<FlSpot> dataPoints = [];
-  List<double> hourlyAverages = List.filled(24, 75);
+  List<double> hourlyAverages = List.filled(24, 0);
 
   bool highAlertSent = false;
   bool lowAlertSent = false;
 
-  Timer? _bpmTimer;      // updates every second
-  Timer? _hrvTimer;      // updates once per hour
-  int _timeCounter = 0;
+  StreamSubscription<int>? _bpmSub;
+  StreamSubscription<List<int>>? _waveSub;
 
-  final Random _rand = Random();
+  final List<double> _waveY = [];
+  final int _maxSamples = 600; // adjust to match your radar sample rate * 60s
 
-  // -------- START SERVICE --------
+  bool _started = false;
+
   void start() {
-    // Prevent duplicate timers
-    _bpmTimer?.cancel();
-    _hrvTimer?.cancel();
+    if (_started) return;
+    _started = true;
 
-    // BPM updates every second
-    _bpmTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateBPM();
-      _updateGraph();
+    // Subscribe to BPM (if Pi provides it)
+    _bpmSub = BleManager.instance.client.heartBpmStream.listen((bpm) {
+      currentBPM = bpm.toDouble();
     });
 
-    // HRV updates once every hour
-    _hrvTimer = Timer.periodic(const Duration(hours: 1), (_) {
-      _updateHRV();
-    });
-  }
-
-  // -------- BPM: ±1 per second (40–120) --------
-  void _updateBPM() {
-    int change = _rand.nextBool() ? 1 : -1;
-    currentBPM += change;
-
-    if (currentBPM < 40) currentBPM = 40;
-    if (currentBPM > 120) currentBPM = 120;
-  }
-
-  // -------- Graph: 60 seconds --------
-  void _updateGraph() {
-    dataPoints.add(FlSpot(_timeCounter.toDouble(), currentBPM));
-
-    if (dataPoints.length > 60) {
-      dataPoints.removeAt(0);
-
-      for (int i = 0; i < dataPoints.length; i++) {
-        dataPoints[i] = FlSpot(i.toDouble(), dataPoints[i].y);
+    // Subscribe to waveform chunks (int16 samples)
+    _waveSub = BleManager.instance.client.heartSamplesStream.listen((samples) {
+      // Scale int16 samples into your chart range (40..160)
+      // NOTE: adjust divisor to match your radar amplitude
+      for (final s in samples) {
+        final y = 100 + (s / 800.0);
+        _waveY.add(y);
       }
-    }
 
-    _timeCounter++;
-  }
+      // cap buffer
+      while (_waveY.length > _maxSamples) {
+        _waveY.removeAt(0);
+      }
 
-  // -------- HRV: update once per hour --------
-  void _updateHRV() {
-    // slow drift, realistic
-    double drift = (_rand.nextDouble() * 0.8) - 0.4;  // -0.4 to +0.4
-
-    hourHRV += drift;
-
-    if (hourHRV < 4) hourHRV = 4;
-    if (hourHRV > 12) hourHRV = 12;
+      // rebuild spots
+      dataPoints = List.generate(
+        _waveY.length,
+        (i) => FlSpot(i.toDouble(), _waveY[i]),
+      );
+    });
   }
 
   void dispose() {
-    _bpmTimer?.cancel();
-    _hrvTimer?.cancel();
+    _bpmSub?.cancel();
+    _waveSub?.cancel();
+    _started = false;
   }
 }

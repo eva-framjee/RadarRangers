@@ -1,51 +1,362 @@
+// import 'dart:async';
+// import 'dart:math';
+// import 'package:flutter/material.dart';
+// import 'package:fl_chart/fl_chart.dart';
+
+// import 'vitals_ble_client.dart';
+// import 'vitals_firestore_logger.dart';
+
+// class LiveBreathWavePage extends StatefulWidget {
+//   final String uid;
+//   const LiveBreathWavePage({super.key, required this.uid});
+
+//   @override
+//   State<LiveBreathWavePage> createState() => _LiveBreathWavePageState();
+// }
+
+// class _LiveBreathWavePageState extends State<LiveBreathWavePage> {
+
+//   // ✅ SAME shared BLE instance (NO reconnect)
+//   final VitalsBleClient ble = VitalsBleClient();
+//   final VitalsFirestoreLogger logger = VitalsFirestoreLogger();
+
+//   Timer? _uiTimer;
+
+//   double displayedBR = 0;
+
+//   // Persistent graph
+//   static final List<FlSpot> _brPoints = [];
+//   static double _tBr = 0.0;
+
+//   static final List<FlSpot> _sinePoints = [];
+//   static double _tSine = 0.0;
+//   static double _phase = 0.0;
+
+//   static const double _windowSeconds = 60.0;
+//   static const Duration _tick = Duration(milliseconds: 120);
+//   static const double _tickSeconds = 0.12;
+
+//   static const double _maxValidBR = 35.0;
+//   static const double _chartMaxY = 50.0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // ✅ ONLY READ DATA (no connect here)
+//     _uiTimer = Timer.periodic(_tick, (_) async {
+//       if (!mounted) return;
+
+//       final br = ble.currentBR;
+//       print("BR PAGE: $br"); // 🔥 DEBUG
+
+//       displayedBR = br;
+
+//       // -----------------------
+//       // BR GRAPH
+//       // -----------------------
+//       if (br > 0 && br <= _maxValidBR) {
+//         _tBr += _tickSeconds;
+//         _brPoints.add(FlSpot(_tBr, br));
+
+//         while (_brPoints.isNotEmpty &&
+//             (_tBr - _brPoints.first.x) > _windowSeconds) {
+//           _brPoints.removeAt(0);
+//         }
+
+//         // Firestore log
+//         await logger.logBreathRate(
+//           uid: widget.uid,
+//           br: br,
+//           minIntervalSeconds: 5,
+//         );
+//       }
+
+//       // -----------------------
+//       // SINE WAVE
+//       // -----------------------
+//       final safeBr = (br > 0 && br <= _maxValidBR) ? br : 12.0;
+//       final hz = safeBr / 60.0;
+
+//       _tSine += _tickSeconds;
+//       _phase += 2 * pi * hz * _tickSeconds;
+
+//       final y = sin(_phase);
+//       _sinePoints.add(FlSpot(_tSine, y));
+
+//       while (_sinePoints.isNotEmpty &&
+//           (_tSine - _sinePoints.first.x) > _windowSeconds) {
+//         _sinePoints.removeAt(0);
+//       }
+
+//       setState(() {});
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _uiTimer?.cancel();
+//     super.dispose();
+//   }
+
+//   Widget _axisTitle(String text) {
+//     return Padding(
+//       padding: const EdgeInsets.only(bottom: 6),
+//       child: Text(
+//         text,
+//         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+
+//     final brSpots = List<FlSpot>.from(_brPoints);
+//     final brMinX = brSpots.isNotEmpty ? brSpots.first.x : 0.0;
+//     final brMaxX = brSpots.isNotEmpty ? brSpots.last.x : _windowSeconds;
+
+//     final sineSpots = List<FlSpot>.from(_sinePoints);
+//     final sineMinX = sineSpots.isNotEmpty ? sineSpots.first.x : 0.0;
+//     final sineMaxX = sineSpots.isNotEmpty ? sineSpots.last.x : _windowSeconds;
+
+//     return SingleChildScrollView(
+//       child: Column(
+//         children: [
+
+//           const SizedBox(height: 10),
+
+//           Text(
+//             "${displayedBR.toStringAsFixed(0)} breaths/min",
+//             style: const TextStyle(
+//               fontSize: 42,
+//               fontWeight: FontWeight.bold,
+//               color: Colors.blue,
+//             ),
+//           ),
+
+//           const SizedBox(height: 20),
+
+//           // =======================
+//           // BREATH RATE GRAPH
+//           // =======================
+//           SizedBox(
+//             height: 240,
+//             child: LineChart(
+//               LineChartData(
+//                 minX: brMinX,
+//                 maxX: brMaxX,
+//                 minY: 0,
+//                 maxY: _chartMaxY,
+//                 gridData: FlGridData(show: true),
+//                 borderData: FlBorderData(show: true),
+//                 titlesData: FlTitlesData(
+//                   leftTitles: AxisTitles(
+//                     axisNameWidget: _axisTitle("Breath rate"),
+//                     sideTitles: SideTitles(showTitles: true),
+//                   ),
+//                   bottomTitles: AxisTitles(
+//                     axisNameWidget: _axisTitle("time"),
+//                     sideTitles: SideTitles(showTitles: false),
+//                   ),
+//                   rightTitles:
+//                       AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//                   topTitles:
+//                       AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//                 ),
+//                 lineBarsData: [
+//                   LineChartBarData(
+//                     spots: brSpots,
+//                     isCurved: true,
+//                     color: Colors.blue,
+//                     barWidth: 3,
+//                     dotData: FlDotData(show: false),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+
+//           const SizedBox(height: 20),
+
+//           // =======================
+//           // SINE GRAPH
+//           // =======================
+//           SizedBox(
+//             height: 240,
+//             child: LineChart(
+//               LineChartData(
+//                 minX: sineMinX,
+//                 maxX: sineMaxX,
+//                 minY: -1.2,
+//                 maxY: 1.2,
+//                 gridData: FlGridData(show: true),
+//                 borderData: FlBorderData(show: true),
+//                 titlesData: FlTitlesData(
+//                   leftTitles: AxisTitles(
+//                     axisNameWidget: _axisTitle("Breathing (emulated)"),
+//                     sideTitles: SideTitles(showTitles: true),
+//                   ),
+//                   bottomTitles: AxisTitles(
+//                     axisNameWidget: _axisTitle("time"),
+//                     sideTitles: SideTitles(showTitles: false),
+//                   ),
+//                   rightTitles:
+//                       AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//                   topTitles:
+//                       AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//                 ),
+//                 lineBarsData: [
+//                   LineChartBarData(
+//                     spots: sineSpots,
+//                     isCurved: true,
+//                     color: Colors.blue,
+//                     barWidth: 2,
+//                     dotData: FlDotData(show: false),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+
+//code that worked monday nigth
+
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'live_breath_rate_service.dart';
 
+import 'vitals_ble_client.dart';
+import 'vitals_firestore_logger.dart';
 
 class LiveBreathWavePage extends StatefulWidget {
-  const LiveBreathWavePage({super.key});
+  final String uid;
+  const LiveBreathWavePage({super.key, required this.uid});
 
   @override
   State<LiveBreathWavePage> createState() => _LiveBreathWavePageState();
 }
 
 class _LiveBreathWavePageState extends State<LiveBreathWavePage> {
-  final engine = BreathEngine();
-  late final Timer refreshTimer;
+
+  // ✅ SAME shared BLE instance (NO reconnect)
+  final VitalsBleClient ble = VitalsBleClient();
+  final VitalsFirestoreLogger logger = VitalsFirestoreLogger();
+
+  Timer? _uiTimer;
+
+  double displayedBR = 0;
+
+  // Persistent graph
+  static final List<FlSpot> _brPoints = [];
+  static double _tBr = 0.0;
+
+  static final List<FlSpot> _sinePoints = [];
+  static double _tSine = 0.0;
+  static double _phase = 0.0;
+
+  static const double _windowSeconds = 60.0;
+  static const Duration _tick = Duration(milliseconds: 120);
+  static const double _tickSeconds = 0.12;
+
+  static const double _maxValidBR = 35.0;
+  static const double _chartMaxY = 50.0;
 
   @override
   void initState() {
     super.initState();
-    engine.start(); // STARTS ONLY ONCE, NEVER RESETS
 
-    refreshTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
-      if (mounted) setState(() {});
+    // ✅ ONLY READ DATA (no connect here)
+    _uiTimer = Timer.periodic(_tick, (_) async {
+      if (!mounted) return;
+
+      final br = ble.currentBR;
+      print("BR PAGE: $br"); // 🔥 DEBUG
+
+      displayedBR = br;
+
+      // -----------------------
+      // BR GRAPH
+      // -----------------------
+      if (br > 0 && br <= _maxValidBR) {
+        _tBr += _tickSeconds;
+        _brPoints.add(FlSpot(_tBr, br));
+
+        while (_brPoints.isNotEmpty &&
+            (_tBr - _brPoints.first.x) > _windowSeconds) {
+          _brPoints.removeAt(0);
+        }
+
+        // Firestore log
+        await logger.logBreathRate(
+          uid: widget.uid,
+          br: br,
+          minIntervalSeconds: 5,
+        );
+      }
+
+      // -----------------------
+      // SINE WAVE
+      // -----------------------
+      final safeBr = (br > 0 && br <= _maxValidBR) ? br : 12.0;
+      final hz = safeBr / 60.0;
+
+      _tSine += _tickSeconds;
+      _phase += 2 * pi * hz * _tickSeconds;
+
+      final y = sin(_phase);
+      _sinePoints.add(FlSpot(_tSine, y));
+
+      while (_sinePoints.isNotEmpty &&
+          (_tSine - _sinePoints.first.x) > _windowSeconds) {
+        _sinePoints.removeAt(0);
+      }
+
+      setState(() {});
     });
   }
 
   @override
   void dispose() {
-    refreshTimer.cancel(); 
+    _uiTimer?.cancel();
     super.dispose();
   }
 
-  Widget rotated(String text) =>
-      Transform.rotate(angle: -1.57, child: Text(text, style: const TextStyle(fontSize: 8)));
+  Widget _axisTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+
+    final brSpots = List<FlSpot>.from(_brPoints);
+    final brMinX = brSpots.isNotEmpty ? brSpots.first.x : 0.0;
+    final brMaxX = brSpots.isNotEmpty ? brSpots.last.x : _windowSeconds;
+
+    final sineSpots = List<FlSpot>.from(_sinePoints);
+    final sineMinX = sineSpots.isNotEmpty ? sineSpots.first.x : 0.0;
+    final sineMaxX = sineSpots.isNotEmpty ? sineSpots.last.x : _windowSeconds;
+
     return SingleChildScrollView(
       child: Column(
         children: [
+
           const SizedBox(height: 10),
 
-          // LIVE BREATH RATE
           Text(
-            "${engine.currentBR.toStringAsFixed(0)} breaths/min",
+            "${displayedBR.toStringAsFixed(0)} breaths/min",
             style: const TextStyle(
               fontSize: 42,
               fontWeight: FontWeight.bold,
@@ -55,151 +366,87 @@ class _LiveBreathWavePageState extends State<LiveBreathWavePage> {
 
           const SizedBox(height: 20),
 
-//60 sec waveform
-          Padding(
-            padding: const EdgeInsets.only(left: 40, right: 20, bottom: 20),
-            child: SizedBox(
-              height: 300,
-              child: LineChart(
-                LineChartData(
-                  minY: 0,
-                  maxY: 35,
-                  minX: 0,
-                  maxX: 60,
-
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: true),
-
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      axisNameWidget: const Text(
-                        "Past 60 seconds",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 10,
-                        getTitlesWidget: (v, m) => Text(
-                          "${60 - v.toInt()}s",
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 5,
-                        reservedSize: 35,
-                        getTitlesWidget: (v, _) =>
-                            Text(v.toInt().toString(), style: const TextStyle(fontSize: 10)),
-                      ),
-                    ),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          // =======================
+          // BREATH RATE GRAPH
+          // =======================
+          SizedBox(
+            height: 240,
+            child: LineChart(
+              LineChartData(
+                minX: brMinX,
+                maxX: brMaxX,
+                minY: 0,
+                maxY: _chartMaxY,
+                gridData: FlGridData(show: true),
+                borderData: FlBorderData(show: true),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    axisNameWidget: _axisTitle("Breath rate"),
+                    sideTitles: SideTitles(showTitles: true),
                   ),
-
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: engine.dataPoints,
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: FlDotData(show: false),
-                    )
-                  ],
+                  bottomTitles: AxisTitles(
+                    axisNameWidget: _axisTitle("time"),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: brSpots,
+                    isCurved: true,
+                    color: Colors.blue,
+                    barWidth: 3,
+                    dotData: FlDotData(show: false),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // 24-Hr bar graph
-         const Text(
-          "Average Breath Rate (past 24 hours)",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+          const SizedBox(height: 20),
 
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 250,
-          child: BarChart(
-            BarChartData(
-              maxY: 35,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-              ),
-
-              borderData: FlBorderData(
-                show: true,
-                border: const Border(
-                  left: BorderSide(color: Colors.black, width: 1),
-                  bottom: BorderSide(color: Colors.black, width: 1),
-                  top: BorderSide(color: Colors.transparent),
-                  right: BorderSide(color: Colors.transparent),
-                ),
-              ),
-
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    interval: 5,
-                    reservedSize: 30,
-                    getTitlesWidget: (v, _) => Text(
-                      v.toInt().toString(),
-                      style: const TextStyle(fontSize: 8),
-                    ),
+          // =======================
+          // SINE GRAPH
+          // =======================
+          SizedBox(
+            height: 240,
+            child: LineChart(
+              LineChartData(
+                minX: sineMinX,
+                maxX: sineMaxX,
+                minY: -1.2,
+                maxY: 1.2,
+                gridData: FlGridData(show: true),
+                borderData: FlBorderData(show: true),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    axisNameWidget: _axisTitle("Breathing (emulated)"),
+                    sideTitles: SideTitles(showTitles: true),
                   ),
-                ),
-
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 20,
-                    getTitlesWidget: (i, _) => Text(
-                      (i.toInt() + 1).toString(),
-                      style: const TextStyle(fontSize: 8),
-                    ),
+                  bottomTitles: AxisTitles(
+                    axisNameWidget: _axisTitle("time"),
+                    sideTitles: SideTitles(showTitles: false),
                   ),
+                  rightTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-
-                // ❌ Fully disable right axis
-                rightTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: false,
-                    reservedSize: 0,
-                    getTitlesWidget: (_, __) => const SizedBox.shrink(),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: sineSpots,
+                    isCurved: true,
+                    color: Colors.blue,
+                    barWidth: 2,
+                    dotData: FlDotData(show: false),
                   ),
-                ),
-
-                // ❌ Fully disable top axis
-                topTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: false,
-                    reservedSize: 0,
-                    getTitlesWidget: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-
-              barGroups: List.generate(
-                24,
-                (i) => BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: engine.hourlyAverages[i],
-                      width: 6,
-                      color: Colors.blue,
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
-        ),
-        
-          const SizedBox(height: 40),
         ],
       ),
     );

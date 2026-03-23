@@ -198,7 +198,7 @@ class _PersonalHistoryPageState extends State<PersonalHistoryPage> {
               const SizedBox(height: 20),
 
               //normal heart rate dropdown
-              
+
               DropdownButtonFormField<String>(
                 value: normalHeartRate,
                 decoration: const InputDecoration(

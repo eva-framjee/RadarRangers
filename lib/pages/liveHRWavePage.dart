@@ -1,97 +1,387 @@
+// import 'dart:async';
+// import 'package:flutter/material.dart';
+// import 'package:fl_chart/fl_chart.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
 
-// lib/pages/liveHRWavePage.dart
+// import 'vitals_ble_client.dart';
+// import 'vitals_firestore_logger.dart';
+
+// class LiveHeartWavePage extends StatefulWidget {
+//   final String uid;
+//   const LiveHeartWavePage({super.key, required this.uid});
+
+//   @override
+//   State<LiveHeartWavePage> createState() => _LiveHeartWavePageState();
+// }
+
+// class _LiveHeartWavePageState extends State<LiveHeartWavePage> {
+
+//   // ✅ SAME shared BLE instance (DO NOT reconnect)
+//   final VitalsBleClient ble = VitalsBleClient();
+
+//   final VitalsFirestoreLogger logger = VitalsFirestoreLogger();
+
+//   final FlutterLocalNotificationsPlugin notificationsPlugin =
+//       FlutterLocalNotificationsPlugin();
+
+//   Timer? _uiTimer;
+//   Timer? _alertTimer;
+
+//   double displayedBPM = 0;
+
+//   int minHR = 60;
+//   int maxHR = 100;
+//   bool rangeLoaded = false;
+
+//   bool lowAlertSent = false;
+//   bool highAlertSent = false;
+
+//   // Persistent graph
+//   static final List<FlSpot> _bpmWave = [];
+//   static double _t = 0.0;
+//   static const double _windowSeconds = 60.0;
+//   static const int _maxPoints = 2000;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     _initNotifications();
+//     _loadUserRange();
+
+//     // ✅ ONLY READ DATA (no BLE connect here)
+//     _uiTimer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+//       if (!mounted) return;
+
+//       final bpm = ble.currentHR;
+//       print("HR PAGE BPM: $bpm"); // 🔥 DEBUG
+
+//       displayedBPM = bpm;
+
+//       if (bpm > 0) {
+//         _t += 0.5;
+//         _bpmWave.add(FlSpot(_t, bpm));
+
+//         // rolling window
+//         while (_bpmWave.isNotEmpty &&
+//             (_t - _bpmWave.first.x) > _windowSeconds) {
+//           _bpmWave.removeAt(0);
+//         }
+
+//         // safety cap
+//         if (_bpmWave.length > _maxPoints) {
+//           _bpmWave.removeRange(0, _bpmWave.length - _maxPoints);
+//         }
+
+//         // Firestore logging
+//         await logger.logHeartRate(
+//           uid: widget.uid,
+//           bpm: bpm,
+//           minIntervalSeconds: 5,
+//         );
+//       }
+
+//       setState(() {});
+//     });
+
+//     // Alerts
+//     _alertTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+//       if (!mounted) return;
+//       if (rangeLoaded) _checkAlerts();
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _uiTimer?.cancel();
+//     _alertTimer?.cancel();
+//     super.dispose();
+//   }
+
+//   Future<void> _loadUserRange() async {
+//     try {
+//       final doc = await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(widget.uid)
+//           .get();
+
+//       final data = doc.data();
+//       final String? range = data?['normal_heart_rate'];
+
+//       if (range != null) {
+//         final parts = range.split("-");
+//         if (parts.length == 2) {
+//           minHR = int.tryParse(parts[0].trim()) ?? 60;
+//           maxHR = int.tryParse(parts[1].trim()) ?? 100;
+//         }
+//       }
+//     } catch (_) {}
+
+//     if (!mounted) return;
+//     setState(() => rangeLoaded = true);
+//   }
+
+//   Future<void> _initNotifications() async {
+//     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+//     const settings = InitializationSettings(android: android);
+
+//     await notificationsPlugin.initialize(settings);
+
+//     const channel = AndroidNotificationChannel(
+//       'heart_alerts',
+//       'Heart Alerts',
+//       description: 'Alerts for abnormal heart rate',
+//       importance: Importance.high,
+//     );
+
+//     final androidPlugin = notificationsPlugin
+//         .resolvePlatformSpecificImplementation<
+//             AndroidFlutterLocalNotificationsPlugin>();
+
+//     if (androidPlugin != null) {
+//       try {
+//         await androidPlugin.createNotificationChannel(channel);
+//       } catch (_) {}
+//     }
+//   }
+
+//   Future<void> _sendAlert(String msg) async {
+//     const androidDetails = AndroidNotificationDetails(
+//       'heart_alerts',
+//       'Heart Alerts',
+//       importance: Importance.max,
+//       priority: Priority.high,
+//     );
+
+//     await notificationsPlugin.show(
+//       0,
+//       "Heart Rate Alert",
+//       msg,
+//       const NotificationDetails(android: androidDetails),
+//     );
+//   }
+
+//   void _checkAlerts() {
+//     final bpm = ble.currentHR;
+//     if (bpm <= 0) return;
+
+//     if (bpm < minHR && !lowAlertSent) {
+//       _sendAlert("Low HR: ${bpm.toInt()} BPM");
+//       lowAlertSent = true;
+//     } else if (bpm >= minHR) {
+//       lowAlertSent = false;
+//     }
+
+//     if (bpm > maxHR && !highAlertSent) {
+//       _sendAlert("High HR: ${bpm.toInt()} BPM");
+//       highAlertSent = true;
+//     } else if (bpm <= maxHR) {
+//       highAlertSent = false;
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+
+//     final waveSpots = List<FlSpot>.from(_bpmWave);
+//     final hasWave = waveSpots.isNotEmpty;
+
+//     final minX = hasWave ? waveSpots.first.x : 0.0;
+//     final maxX = hasWave ? waveSpots.last.x : _windowSeconds;
+
+//     return Column(
+//       children: [
+
+//         const SizedBox(height: 10),
+
+//         Text(
+//           "${displayedBPM.toStringAsFixed(0)} bpm",
+//           style: const TextStyle(
+//             fontSize: 42,
+//             fontWeight: FontWeight.bold,
+//             color: Colors.red,
+//           ),
+//         ),
+
+//         const SizedBox(height: 10),
+
+//         if (rangeLoaded)
+//           Text(
+//             "Normal range: $minHR - $maxHR bpm",
+//             style: const TextStyle(fontSize: 12),
+//           ),
+
+//         const SizedBox(height: 20),
+
+//         SizedBox(
+//           height: 300,
+//           child: LineChart(
+//             LineChartData(
+//               minX: minX,
+//               maxX: maxX,
+//               minY: 0,
+//               maxY: 250,
+//               gridData: FlGridData(show: true),
+//               borderData: FlBorderData(show: true),
+//               titlesData: FlTitlesData(
+//                 leftTitles: AxisTitles(
+//                   axisNameWidget: const Text("Heart rate (bpm)"),
+//                   sideTitles: SideTitles(showTitles: true),
+//                 ),
+//                 bottomTitles: AxisTitles(
+//                   axisNameWidget: const Text("time"),
+//                   sideTitles: SideTitles(showTitles: false),
+//                 ),
+//                 rightTitles:
+//                     AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//                 topTitles:
+//                     AxisTitles(sideTitles: SideTitles(showTitles: false)),
+//               ),
+//               lineBarsData: [
+//                 LineChartBarData(
+//                   spots: waveSpots,
+//                   isCurved: true,
+//                   color: Colors.red,
+//                   barWidth: 3,
+//                   dotData: FlDotData(show: false),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+
+
+//CODE THAT WORKED MONDAY NIGHT
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'live_heart_rate_service.dart'; // adjust path if needed
+import 'vitals_ble_client.dart';
+import 'vitals_firestore_logger.dart';
 
 class LiveHeartWavePage extends StatefulWidget {
-  final String username;  // <-- you MUST pass the username so we know which user to load
-
-  const LiveHeartWavePage({super.key, required this.username});
+  final String uid;
+  const LiveHeartWavePage({super.key, required this.uid});
 
   @override
   State<LiveHeartWavePage> createState() => _LiveHeartWavePageState();
 }
 
 class _LiveHeartWavePageState extends State<LiveHeartWavePage> {
-  final HeartRateService service = HeartRateService();
 
-  // Local notifications
+  // ✅ SAME shared BLE instance (DO NOT reconnect)
+  final VitalsBleClient ble = VitalsBleClient();
+
+  final VitalsFirestoreLogger logger = VitalsFirestoreLogger();
+
   final FlutterLocalNotificationsPlugin notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Timer? _waveformTimer;
-  Timer? _bpmTimer;
+  Timer? _uiTimer;
+  Timer? _alertTimer;
 
   double displayedBPM = 0;
 
-  // User-selected HR range
-  int minHR = 60;   // default fallback
-  int maxHR = 100;  // default fallback
+  int minHR = 60;
+  int maxHR = 100;
   bool rangeLoaded = false;
+
+  bool lowAlertSent = false;
+  bool highAlertSent = false;
+
+  // Persistent graph
+  static final List<FlSpot> _bpmWave = [];
+  static double _t = 0.0;
+  static const double _windowSeconds = 60.0;
+  static const int _maxPoints = 2000;
 
   @override
   void initState() {
     super.initState();
+
     _initNotifications();
     _loadUserRange();
 
-    service.start();
+    // ✅ ONLY READ DATA (no BLE connect here)
+    _uiTimer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+      if (!mounted) return;
 
-    _waveformTimer = Timer.periodic(
-      const Duration(milliseconds: 100),
-      (_) => setState(() {}),
-    );
+      final bpm = ble.currentHR;
+      print("HR PAGE BPM: $bpm"); // 🔥 DEBUG
 
-    _bpmTimer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-        setState(() {
-          displayedBPM = service.currentBPM;
-        });
-        if (rangeLoaded) _checkAlerts();
-      },
-    );
+      displayedBPM = bpm;
+
+      if (bpm > 0) {
+        _t += 0.5;
+        _bpmWave.add(FlSpot(_t, bpm));
+
+        // rolling window
+        while (_bpmWave.isNotEmpty &&
+            (_t - _bpmWave.first.x) > _windowSeconds) {
+          _bpmWave.removeAt(0);
+        }
+
+        // safety cap
+        if (_bpmWave.length > _maxPoints) {
+          _bpmWave.removeRange(0, _bpmWave.length - _maxPoints);
+        }
+
+        // Firestore logging
+        await logger.logHeartRate(
+          uid: widget.uid,
+          bpm: bpm,
+          minIntervalSeconds: 5,
+        );
+      }
+
+      setState(() {});
+    });
+
+    // Alerts
+    _alertTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (rangeLoaded) _checkAlerts();
+    });
   }
 
   @override
   void dispose() {
-    _waveformTimer?.cancel();
-    _bpmTimer?.cancel();
+    _uiTimer?.cancel();
+    _alertTimer?.cancel();
     super.dispose();
   }
 
-  // ---------------- LOAD USER HEART-RATE RANGE ----------------
   Future<void> _loadUserRange() async {
-    final docs = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: widget.username)
-        .limit(1)
-        .get();
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .get();
 
-    if (docs.docs.isNotEmpty) {
-      final data = docs.docs.first.data();
-      final String? range = data['normal_heart_rate'];
+      final data = doc.data();
+      final String? range = data?['normal_heart_rate'];
 
       if (range != null) {
         final parts = range.split("-");
         if (parts.length == 2) {
-          minHR = int.tryParse(parts[0]) ?? 60;
-          maxHR = int.tryParse(parts[1]) ?? 100;
+          minHR = int.tryParse(parts[0].trim()) ?? 60;
+          maxHR = int.tryParse(parts[1].trim()) ?? 100;
         }
       }
-    }
+    } catch (_) {}
 
-    setState(() {
-      rangeLoaded = true;
-    });
+    if (!mounted) return;
+    setState(() => rangeLoaded = true);
   }
 
-  // ---------------- NOTIFICATIONS ----------------
   Future<void> _initNotifications() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
@@ -99,25 +389,22 @@ class _LiveHeartWavePageState extends State<LiveHeartWavePage> {
     await notificationsPlugin.initialize(settings);
 
     const channel = AndroidNotificationChannel(
-      'heart_alerts', // must match your notification channel ID
+      'heart_alerts',
       'Heart Alerts',
       description: 'Alerts for abnormal heart rate',
       importance: Importance.high,
     );
 
-    final androidPlugin =
-        notificationsPlugin.resolvePlatformSpecificImplementation<
+    final androidPlugin = notificationsPlugin
+        .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidPlugin != null) {
       try {
         await androidPlugin.createNotificationChannel(channel);
-      } catch (e) {
-        print("Notification channel already exists");
-      }
+      } catch (_) {}
     }
   }
-
 
   Future<void> _sendAlert(String msg) async {
     const androidDetails = AndroidNotificationDetails(
@@ -135,235 +422,95 @@ class _LiveHeartWavePageState extends State<LiveHeartWavePage> {
     );
   }
 
-  // ---------------- ALERT LOGIC USING USER RANGE ----------------
   void _checkAlerts() {
-    final bpm = service.currentBPM;
+    final bpm = ble.currentHR;
+    if (bpm <= 0) return;
 
-    // Low alert
-    if (bpm < minHR && !service.lowAlertSent) {
-      _sendAlert("Heart rate too low: ${bpm.toInt()} BPM\n(Normal range: $minHR - $maxHR)");
-      service.lowAlertSent = true;
+    if (bpm < minHR && !lowAlertSent) {
+      _sendAlert("Low HR: ${bpm.toInt()} BPM");
+      lowAlertSent = true;
     } else if (bpm >= minHR) {
-      service.lowAlertSent = false;
+      lowAlertSent = false;
     }
 
-    // High alert
-    if (bpm > maxHR && !service.highAlertSent) {
-      _sendAlert("Heart rate too high: ${bpm.toInt()} BPM\n(Normal range: $minHR - $maxHR)");
-      service.highAlertSent = true;
+    if (bpm > maxHR && !highAlertSent) {
+      _sendAlert("High HR: ${bpm.toInt()} BPM");
+      highAlertSent = true;
     } else if (bpm <= maxHR) {
-      service.highAlertSent = false;
+      highAlertSent = false;
     }
   }
 
-  // ---------------- COLOR LOGIC FOR BARS ----------------
-  Color _getBarColor(double bpm) {
-    if (bpm > maxHR) return Colors.red;
-    if (bpm < minHR) return Colors.red;
-    return Colors.green;
-  }
-
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
 
+    final waveSpots = List<FlSpot>.from(_bpmWave);
+    final hasWave = waveSpots.isNotEmpty;
+
+    final minX = hasWave ? waveSpots.first.x : 0.0;
+    final maxX = hasWave ? waveSpots.last.x : _windowSeconds;
+
+    return Column(
+      children: [
+
+        const SizedBox(height: 10),
+
+        Text(
+          "${displayedBPM.toStringAsFixed(0)} bpm",
+          style: const TextStyle(
+            fontSize: 42,
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        if (rangeLoaded)
           Text(
-            "${displayedBPM.toStringAsFixed(0)} bpm",
-            style: const TextStyle(
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
+            "Normal range: $minHR - $maxHR bpm",
+            style: const TextStyle(fontSize: 12),
           ),
 
-          const SizedBox(height: 10),
+        const SizedBox(height: 20),
 
-          // HRV Box
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade200, width: 1),
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  "Heart Rate Variability (last hour)",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red,
-                  ),
+        SizedBox(
+          height: 300,
+          child: LineChart(
+            LineChartData(
+              minX: minX,
+              maxX: maxX,
+              minY: 0,
+              maxY: 250,
+              gridData: FlGridData(show: true),
+              borderData: FlBorderData(show: true),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  axisNameWidget: const Text("Heart rate (bpm)"),
+                  sideTitles: SideTitles(showTitles: true),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  "+/-${service.hourHRV.toStringAsFixed(1)} bpm",
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+                bottomTitles: AxisTitles(
+                  axisNameWidget: const Text("time"),
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles:
+                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: waveSpots,
+                  isCurved: true,
+                  color: Colors.red,
+                  barWidth: 3,
+                  dotData: FlDotData(show: false),
                 ),
               ],
             ),
           ),
-
-          // Waveform
-          Padding(
-            padding: const EdgeInsets.only(left: 40, right: 20, bottom: 20),
-            child: SizedBox(
-              height: 300,
-              child: LineChart(
-                LineChartData(
-                  minY: 40,
-                  maxY: 160,
-                  minX: 0,
-                  maxX: 60,
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: true),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      axisNameWidget: const Text(
-                        "Past 60 seconds",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 10,
-                        getTitlesWidget: (v, m) => Text(
-                          "${60 - v.toInt()}s",
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 20,
-                        getTitlesWidget: (v, _) => Text(
-                          v.toInt().toString(),
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: service.dataPoints,
-                      isCurved: true,
-                      barWidth: 3,
-                      color: Colors.red,
-                      dotData: FlDotData(show: false),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 24-Hour Bar Chart
-          // ---------- 24-Hour Average Bar Chart ----------
-          Column(
-            children: [
-              const Text(
-                "Average Heart Rate (past 24 hours)",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              SizedBox(
-                height: 250,
-                child: BarChart(
-                  BarChartData(
-                    maxY: 160,
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                    ),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: const Border(
-                        left: BorderSide(color: Colors.black, width: 1),
-                        bottom: BorderSide(color: Colors.black, width: 1),
-
-                        // REMOVE right + top axes
-                        right: BorderSide(color: Colors.transparent),
-                        top: BorderSide(color: Colors.transparent),
-                      ),
-                    ),
-
-                    titlesData: FlTitlesData(
-                      // LEFT AXIS (keep)
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 20,
-                          getTitlesWidget: (v, _) =>
-                              Text(v.toInt().toString(), style: const TextStyle(fontSize: 8)),
-                        ),
-                      ),
-
-                      // BOTTOM AXIS (keep hours)
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (i, _) =>
-                              Text((i.toInt() + 1).toString(), style: const TextStyle(fontSize: 8)),
-                        ),
-                      ),
-
-                      // REMOVE RIGHT AXIS
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-
-                      // REMOVE TOP AXIS
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-
-                    barGroups: List.generate(
-                      24,
-                      (i) {
-                        final bpm = service.hourlyAverages[i];
-                        return BarChartGroupData(
-                          x: i,
-                          barRods: [
-                            BarChartRodData(
-                              toY: bpm,
-                              width: 6,
-                              color: _getBarColor(bpm),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-
-          const SizedBox(height: 40),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
