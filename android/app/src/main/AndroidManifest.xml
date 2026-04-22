@@ -18,6 +18,10 @@
     <!-- Often still required to get scan results on many phones -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+<!--new line-->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+
     <!-- Declare BLE hardware -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"

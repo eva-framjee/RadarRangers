@@ -252,10 +252,12 @@
 
 // CODE THE NIGHT EVERYTHING WORKED
 
-
+// before 4/7/2026
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// import 'firestore_copy_service.dart';
 
 import 'login_page.dart';
 import 'PatternStats_page.dart';
@@ -292,7 +294,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    print('Init state ran');
     _startBle();
+    // _copyTestUserData();
   }
 
   Future<void> _startBle() async {
@@ -320,6 +324,23 @@ class _HomePageState extends State<HomePage> {
 
     _connecting = false;
   }
+
+  // Future<void> _copyTestUserData() async {
+  //   print('===========COPY FUNCTION STARTED');
+
+  //   try {
+  //     final copyService = FirestoreCopyService();
+
+  //     await copyService.copyUserVitalsData(
+  //       sourceUserDocId: 'documentID',
+  //       targetUserDocId: 'oDiYddt6AgeeraDA9ZsnUXkgE543',
+  //     );
+
+  //     print('COPY COMPLETE');
+  //   } catch (e) {
+  //     print('COPY FAILED: $e');
+  //   }
+  // }
 
   void _startListening() {
     Future.doWhile(() async {
@@ -469,3 +490,238 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+
+
+// after 4/7/2026
+
+// import 'dart:async';
+
+// import 'package:flutter/material.dart';
+
+// import 'login_page.dart';
+// import 'PatternStats_page.dart';
+// import 'statHistoryPage.dart';
+// import 'personalHistoryPage.dart';
+// import 'user_manual_page.dart';
+// import 'vitals_ble_client.dart';
+
+// class HomePage extends StatefulWidget {
+//   final String username;
+//   final String uid;
+
+//   const HomePage({
+//     super.key,
+//     required this.username,
+//     required this.uid,
+//   });
+
+//   @override
+//   State<HomePage> createState() => _HomePageState();
+// }
+
+// class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+//   final VitalsBleClient ble = VitalsBleClient();
+
+//   String status = "Starting...";
+//   double hr = 0;
+//   double br = 0;
+
+//   bool _connecting = false;
+//   Timer? _uiTimer;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addObserver(this);
+
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       _startBle();
+//       _startListening();
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     WidgetsBinding.instance.removeObserver(this);
+//     _uiTimer?.cancel();
+//     super.dispose();
+//   }
+
+//   @override
+//   void didChangeAppLifecycleState(AppLifecycleState state) {
+//     if (state == AppLifecycleState.resumed) {
+//       _startBle();
+//     }
+//   }
+
+//   Future<void> _startBle() async {
+//     if (_connecting) return;
+//     _connecting = true;
+
+//     try {
+//       if (!mounted) return;
+//       setState(() => status = "Connecting to RadarRangers...");
+
+//       await ble.connect("RadarRangers");
+//       await ble.sendCommand("start");
+
+//       if (!mounted) return;
+//       setState(() => status = "Connected ✅");
+
+//       print("BLE CONNECTED + START SENT");
+//     } catch (e) {
+//       print("BLE ERROR: $e");
+
+//       if (!mounted) return;
+//       setState(() => status = "Connection failed ❌");
+//     } finally {
+//       _connecting = false;
+//     }
+//   }
+
+//   void _startListening() {
+//     _uiTimer?.cancel();
+
+//     _uiTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+//       if (!mounted) return;
+
+//       setState(() {
+//         hr = ble.currentHR;
+//         br = ble.currentBR;
+//       });
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final username = widget.username;
+//     final uid = widget.uid;
+
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('Home Page'),
+//         backgroundColor: const Color.fromARGB(255, 172, 198, 170),
+//       ),
+//       body: Center(
+//         child: SingleChildScrollView(
+//           child: Column(
+//             mainAxisAlignment: MainAxisAlignment.center,
+//             children: [
+//               Text(
+//                 'Welcome, $username!',
+//                 style: const TextStyle(
+//                   fontSize: 26,
+//                   fontWeight: FontWeight.bold,
+//                 ),
+//               ),
+
+//               const SizedBox(height: 10),
+
+//               Text(
+//                 status,
+//                 style: TextStyle(
+//                   fontSize: 16,
+//                   color: status.contains("failed") ? Colors.red : Colors.black,
+//                 ),
+//               ),
+
+//               const SizedBox(height: 20),
+
+//               if (status.contains("failed"))
+//                 ElevatedButton.icon(
+//                   onPressed: _connecting ? null : _startBle,
+//                   icon: const Icon(Icons.refresh),
+//                   label: const Text("Retry Connection"),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: Colors.redAccent,
+//                   ),
+//                 ),
+
+//               const SizedBox(height: 20),
+
+//               Text(
+//                 "Heart Rate: ${hr.toStringAsFixed(0)} BPM",
+//                 style: const TextStyle(fontSize: 22),
+//               ),
+
+//               const SizedBox(height: 10),
+
+//               Text(
+//                 "Breath Rate: ${br.toStringAsFixed(0)} BPM",
+//                 style: const TextStyle(fontSize: 22),
+//               ),
+
+//               const SizedBox(height: 30),
+
+//               _navButton("Daily Stats", () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(builder: (context) => StatsPage(uid: uid)),
+//                 );
+//               }),
+
+//               _navButton("Stat History", () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(
+//                     builder: (context) => StatHistoryPage(uid: uid),
+//                   ),
+//                 );
+//               }),
+
+//               _navButton("Personal History", () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(
+//                     builder: (context) =>
+//                         PersonalHistoryPage(username: username),
+//                   ),
+//                 );
+//               }),
+
+//               const SizedBox(height: 30),
+
+//               ElevatedButton.icon(
+//                 onPressed: () {
+//                   Navigator.pushReplacement(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (context) => const LoginPage(),
+//                     ),
+//                   );
+//                 },
+//                 icon: const Icon(Icons.logout),
+//                 label: const Text('Log Out'),
+//               ),
+
+//               const SizedBox(height: 20),
+
+//               GestureDetector(
+//                 onTap: () {
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (context) => const UserManualPage(),
+//                     ),
+//                   );
+//                 },
+//                 child: const Text("User Manual"),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _navButton(String title, VoidCallback onTap) {
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(vertical: 8),
+//       child: ElevatedButton(
+//         onPressed: onTap,
+//         child: Text(title),
+//       ),
+//     );
+//   }
+// }

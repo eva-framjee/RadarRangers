@@ -196,8 +196,117 @@
 
 //new for tracking ai state
 
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:permission_handler/permission_handler.dart';
+
+// import 'package:flutter_application_1/pages/login_page.dart';
+// import 'package:flutter_application_1/pages/notification_service.dart';
+
+// final FlutterLocalNotificationsPlugin notificationsPlugin =
+//     FlutterLocalNotificationsPlugin();
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+
+//   await NotificationService().init();
+
+//   await requestNotificationPermission();
+
+//   runApp(const MyApp());
+// }
+
+// Future<void> requestNotificationPermission() async {
+//   if (await Permission.notification.isDenied) {
+//     await Permission.notification.request();
+//   }
+
+//   await notificationsPlugin
+//       .resolvePlatformSpecificImplementation<
+//           IOSFlutterLocalNotificationsPlugin>()
+//       ?.requestPermissions(
+//         alert: true,
+//         badge: true,
+//         sound: true,
+//       );
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Health Monitor',
+//       debugShowCheckedModeBanner: false,
+//       theme: ThemeData(
+//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+//       ),
+//       home: const LoginPage(),
+//     );
+//   }
+// }
+
+// april 17
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:permission_handler/permission_handler.dart';
+
+// import 'package:flutter_application_1/pages/login_page.dart';
+// import 'package:flutter_application_1/pages/notification_service.dart';
+
+// final FlutterLocalNotificationsPlugin notificationsPlugin = 
+//     FlutterLocalNotificationsPlugin();
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+
+//   await NotificationService().init();
+
+//   await requestNotificationPermission();
+
+//   runApp(const MyApp());
+// }
+
+// Future<void> requestNotificationPermission() async {
+//   if (await Permission.notification.isDenied) {
+//     await Permission.notification.request();
+//   }
+
+//   await notificationsPlugin
+//       .resolvePlatformSpecificImplementation<
+//           IOSFlutterLocalNotificationsPlugin>()
+//       ?.requestPermissions(
+//         alert: true,
+//         badge: true,
+//         sound: true,
+//       );
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Health Monitor',
+//       debugShowCheckedModeBanner: false,
+//       theme: ThemeData(
+//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+//       ),
+//       home: const LoginPage(),
+//     );
+//   }
+// }
+
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -210,6 +319,10 @@ final FlutterLocalNotificationsPlugin notificationsPlugin =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: false,
+  );
 
   await NotificationService().init();
 
